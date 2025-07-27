@@ -1,0 +1,9 @@
+#This project is Based on Ollama 3.2 Latest 
+this project works on a custom model files and changed parameters within the Ollama
+
+steps:
+1.make sure 'ollama serve' is running in background
+2.setup the environment variables in powershell for current user as RemoteSigned
+3.setup virtual environment '.\.venv\Scripts\activate '
+4.create a new ollama model using modelfile as command 'ollama create modelname -f modelfile'
+5.run the model using ollama serve is running and use the code 
