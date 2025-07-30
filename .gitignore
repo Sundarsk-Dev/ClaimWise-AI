@@ -1,0 +1,3 @@
+venv/
+chunks.pkl
+embeddings.npy
