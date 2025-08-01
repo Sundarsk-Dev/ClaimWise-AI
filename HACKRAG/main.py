@@ -1,11 +1,11 @@
 import os
 import shutil
 import json
-import pickle # For saving/loading chunks
-import numpy as np # For numerical operations
+import pickle 
+import numpy as np 
 from typing import List, Tuple, Optional
 import streamlit as st 
-from sklearn.metrics.pairwise import cosine_similarity # For cosine similarity calculation
+from sklearn.metrics.pairwise import cosine_similarity 
 
 # Document Loaders and Text Splitter (from langchain_community)
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
