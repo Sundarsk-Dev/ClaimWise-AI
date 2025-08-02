@@ -11,10 +11,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# Embedding Model (using HuggingFaceEmbeddings, which wraps SentenceTransformer)
 from langchain_huggingface import HuggingFaceEmbeddings 
-
-# LLM (using Ollama)
 from langchain_ollama import OllamaLLM 
 
 # Langchain Core components
@@ -505,3 +502,4 @@ if prompt := st.chat_input("Enter your query here..."):
                 general_response = get_general_chat_response(prompt)
                 st.markdown(general_response)
                 st.session_state.messages.append({"role": "assistant", "content": general_response})
+
