@@ -28,7 +28,7 @@ import re
 EMBEDDINGS_FILE = "embeddings.npy"
 CHUNKS_FILE = "chunks.pkl"
 
-LLM_MODEL_NAME = "insurance-analyst" 
+LLM_MODEL_NAME = "phi3:mini" 
 EMBEDDING_MODEL_NAME_HF = "all-MiniLM-L6-v2" # The SentenceTransformer model name
 MAX_RETRIEVED_CHUNKS = 3 # Number of top chunks to pass to the LLM
 
