@@ -6,6 +6,31 @@ import numpy as np # For numerical operations
 from typing import List, Tuple, Optional
 import streamlit as st 
 from sklearn.metrics.pairwise import cosine_similarity # For cosine similarity calculation
+import atexit
+
+# --- Configuration ---
+# Paths for local storage of embeddings and chunks
+EMBEDDINGS_FILE = "embeddings.npy"
+CHUNKS_FILE = "chunks.pkl"
+
+LLM_MODEL_NAME = "phi3:mini" 
+EMBEDDING_MODEL_NAME_HF = "all-MiniLM-L6-v2" # The SentenceTransformer model name
+MAX_RETRIEVED_CHUNKS = 3 # Number of top chunks to pass to the LLM
+
+def cleanup_files():
+    """Clean up embedding and chunk files when the application closes."""
+    try:
+        if os.path.exists(EMBEDDINGS_FILE):
+            os.remove(EMBEDDINGS_FILE)
+            print(f"Cleaned up {EMBEDDINGS_FILE}")
+        if os.path.exists(CHUNKS_FILE):
+            os.remove(CHUNKS_FILE)
+            print(f"Cleaned up {CHUNKS_FILE}")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
+# Register the cleanup function to run when the application exits
+atexit.register(cleanup_files)
 
 # Document Loaders and Text Splitter (from langchain_community)
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
@@ -22,15 +47,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 import re 
-
-# --- Configuration ---
-# Paths for local storage of embeddings and chunks
-EMBEDDINGS_FILE = "embeddings.npy"
-CHUNKS_FILE = "chunks.pkl"
-
-LLM_MODEL_NAME = "phi3:mini" 
-EMBEDDING_MODEL_NAME_HF = "all-MiniLM-L6-v2" # The SentenceTransformer model name
-MAX_RETRIEVED_CHUNKS = 3 # Number of top chunks to pass to the LLM
 
 # --- Pydantic Model for Structured Output ---
 class DecisionOutput(BaseModel):
@@ -94,15 +110,32 @@ def get_embeddings_model():
         st.error("Please ensure 'sentence-transformers' is installed and you have an active internet connection for the first download, or consider manual download/offline mode if issues persist.")
         return None
 
+def clear_existing_data():
+    """Clear existing embeddings and chunks data."""
+    # Clear files
+    if os.path.exists(EMBEDDINGS_FILE):
+        os.remove(EMBEDDINGS_FILE)
+    if os.path.exists(CHUNKS_FILE):
+        os.remove(CHUNKS_FILE)
+    
+    # Clear session state
+    st.session_state.embeddings_data = None
+    st.session_state.chunks_data = None
+    st.info("Cleared existing document data to make room for new documents.")
+
 def process_and_store_documents(chunks):
     """
     Generates embeddings for chunks and saves them along with chunks to local files.
+    Replaces any existing data.
     """
     embedding_model = st.session_state.embedding_model # Use the cached embedding model
     
     if embedding_model is None:
         st.error("Embedding model is not initialized. Cannot process documents.")
         return False
+
+    # Clear existing data first
+    clear_existing_data()
 
     with st.spinner("Generating embeddings and saving to local files..."):
         try:
@@ -166,14 +199,21 @@ def parse_query_and_decide(input_query: str) -> DecisionOutput:
     """
     # Access cached components from session state
     llm = st.session_state.llm
-    embedding_model = st.session_state.embedding_model # Get the embedding model
+    embedding_model = st.session_state.embedding_model
     all_chunk_embeddings = st.session_state.embeddings_data
     all_chunk_texts = st.session_state.chunks_data
 
     if llm is None or embedding_model is None:
         raise ValueError("LLM or Embedding Model not initialized. Please restart the application.")
+    
+    # Check if documents are loaded
     if all_chunk_embeddings is None or all_chunk_texts is None or len(all_chunk_embeddings) == 0:
-        raise ValueError("No document data loaded. Please upload and process documents first.")
+        # No documents loaded - provide a general response about needing documents
+        return DecisionOutput(
+            Decision="No Documents Available",
+            Justification="No insurance policy documents have been uploaded yet. To analyze your claim, please upload your insurance policy documents (PDF, DOCX, or TXT format) using the sidebar. Once documents are processed, I can provide specific decisions based on your policy terms and conditions.",
+            ClausesUsed=["Please upload insurance policy documents to enable claim analysis"]
+        )
     
     st.info(f"Processing query: '{input_query}'")
 
@@ -308,6 +348,8 @@ st.markdown(
     
     **💡 Example Query:** "46-year-old male, knee surgery in Pune, 3-month-old insurance policy"
     
+    **📝 Note:** In Insurance Analyst mode without uploaded documents, I'll guide you on what documents are needed.
+    
     **Performance Note:** Initial model loading and document processing times are dependent on your system's CPU and RAM. Subsequent query responses should be faster.
     """
 )
@@ -334,7 +376,7 @@ if st.session_state.llm is None:
 if st.session_state.embedding_model is None: 
     st.session_state.embedding_model = get_embeddings_model()
 
-# Attempt to load data if it exists on disk at startup
+# Attempt to load data if it exists on disk at startup (but files will be cleaned up on app close)
 if st.session_state.embeddings_data is None and st.session_state.chunks_data is None:
     load_stored_data()
 
@@ -343,6 +385,12 @@ with st.sidebar:
     st.header("📄 Upload Policy Documents")
     st.write("Drag & drop your policy files here or click to browse.")
     st.write("The more relevant documents you provide, the better I can assist!")
+    
+    # Show current document status
+    if st.session_state.embeddings_data is not None and st.session_state.chunks_data is not None:
+        st.success(f"✅ Documents loaded: {len(st.session_state.chunks_data)} chunks available")
+    else:
+        st.info("📋 No documents loaded. Upload documents to enable full analysis.")
     
     uploaded_files = st.file_uploader(
         "Supported formats: PDF, DOCX, TXT", 
@@ -373,9 +421,10 @@ with st.sidebar:
                 documents = load_documents(file_paths)
                 if documents:
                     chunks = split_documents(documents)
-                    # Use the new function to process and store data
+                    # Use the new function to process and store data (this will replace existing data)
                     if process_and_store_documents(chunks):
-                        st.success("Documents processed and RAG model ready! You can now ask claim-related queries.")
+                        st.success("Documents processed and RAG model ready! Previous documents have been replaced.")
+                        st.rerun()  # Refresh the page to update document status
                     else:
                         st.error("Failed to process and store documents.")
                 else:
@@ -399,28 +448,24 @@ with st.sidebar:
         key="chat_mode_radio"
     )
     st.info(f"Current mode: **{st.session_state.mode}**")
-
+    
+    if st.session_state.mode == "Insurance Analyst":
+        if st.session_state.embeddings_data is None:
+            st.warning("⚠️ No documents loaded. I can still help guide you on what documents to upload!")
 
     st.markdown("---")
     if st.button("🧹 Clear All State and Documents"):
         # Clear local files
-        if os.path.exists(EMBEDDINGS_FILE):
-            os.remove(EMBEDDINGS_FILE)
-            st.info(f"Cleared {EMBEDDINGS_FILE}")
-        if os.path.exists(CHUNKS_FILE):
-            os.remove(CHUNKS_FILE)
-            st.info(f"Cleared {CHUNKS_FILE}")
-            
-        # Clear session state
-        st.session_state.embeddings_data = None
-        st.session_state.chunks_data = None
+        clear_existing_data()
+        
+        # Clear chat messages
         st.session_state.messages = []
         
         # Re-initialize LLM and embedding model as they are cached resources
         st.session_state.llm = setup_llm() 
         st.session_state.embedding_model = get_embeddings_model() 
         st.success("Application state cleared. Please re-upload documents.")
-        st.experimental_rerun() # Rerun to clear chat display
+        st.rerun() # Rerun to clear chat display
 
 # Main chat interface
 st.header("💬 Claim Analysis Chat")
@@ -441,7 +486,7 @@ if prompt := st.chat_input("Enter your query here..."):
     # Determine response based on mode
     with st.chat_message("assistant"):
         if st.session_state.mode == "Insurance Analyst":
-            # In Insurance Analyst mode, always use RAG
+            # In Insurance Analyst mode, always use RAG (even without documents)
             with st.spinner("Analyzing claim..."):
                 try:
                     decision_output = parse_query_and_decide(prompt)
@@ -469,10 +514,10 @@ if prompt := st.chat_input("Enter your query here..."):
         elif st.session_state.mode == "General Chatbot":
             # Simple keyword check for intent routing even in general mode
             insurance_keywords = ["policy", "claim", "coverage", "deductible", "premium", 
-                                  "hospital", "surgery", "accident", "benefit", "exclusion", 
-                                  "waiting period", "medical", "insurance", "46m", "m", "male",
-                                  "female", "age", "year old", "month policy", "knee surgery", 
-                                  "pune", "mumbai", "procedure", "diagnosis", "treatment"]
+                                "hospital", "surgery", "accident", "benefit", "exclusion", 
+                                "waiting period", "medical", "insurance", "46m", "m", "male",
+                                "female", "age", "year old", "month policy", "knee surgery", 
+                                "pune", "mumbai", "procedure", "diagnosis", "treatment"]
             
             # Check if any insurance-related keyword is in the prompt AND documents have been processed
             # The 'embeddings_data is not None' check ensures we only try RAG if documents are loaded.
