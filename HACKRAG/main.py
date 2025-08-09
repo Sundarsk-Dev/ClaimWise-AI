@@ -2,7 +2,7 @@ import os
 import shutil
 import json
 import pickle 
-import numpy as np # For numerical operations
+import numpy as np 
 from typing import List, Tuple, Optional
 import streamlit as st 
 from sklearn.metrics.pairwise import cosine_similarity # For cosine similarity calculation
@@ -551,3 +551,4 @@ if prompt := st.chat_input("Enter your query here..."):
                 st.markdown(general_response)
 
                 st.session_state.messages.append({"role": "assistant", "content": general_response})
+
