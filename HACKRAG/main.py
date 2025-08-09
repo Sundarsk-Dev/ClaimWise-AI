@@ -1,7 +1,7 @@
 import os
 import shutil
 import json
-import pickle # For saving/loading chunks
+import pickle 
 import numpy as np # For numerical operations
 from typing import List, Tuple, Optional
 import streamlit as st 
@@ -549,4 +549,5 @@ if prompt := st.chat_input("Enter your query here..."):
                 # General conversation
                 general_response = get_general_chat_response(prompt)
                 st.markdown(general_response)
+
                 st.session_state.messages.append({"role": "assistant", "content": general_response})
