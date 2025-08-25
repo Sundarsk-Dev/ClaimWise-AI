@@ -2,7 +2,7 @@ hello fellow coders/HR
 this claimwise-AI can be run by first downloading ollama models - miniphi3 For semantic embedding , and ollama all-minilm:l6-v2 for processing 
 
 this project works on a custom model files and changed parameters within the Ollama
-0. the source is code in file hackrag not alt 
+0. the source is present in hackrag ,which is the most stable running code of it 
 1. and make sure the modelfile command is run to create a new version of ollama for minilm:l6-v2
 steps:
 1.make sure 'ollama serve' is running in background
