@@ -1,0 +1,11 @@
+hello fellow coders/HR
+this claimwise-AI can be run by first downloading ollama models - miniphi3 For semantic embedding , and ollama all-minilm:l6-v2 for processing 
+
+this project works on a custom model files and changed parameters within the Ollama
+1. and make sure the modelfile command is run to create a new version of ollama for minilm:l6-v2
+steps:
+1.make sure 'ollama serve' is running in background
+2.setup the environment variables in powershell for current user as RemoteSigned
+3.setup virtual environment '.\.venv\Scripts\activate '
+4.create a new ollama model using modelfile as command 'ollama create modelname -f modelfile'
+5.run the model using ollama serve is running and use the code 
