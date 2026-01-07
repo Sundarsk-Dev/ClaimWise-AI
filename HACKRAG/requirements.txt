@@ -5,6 +5,13 @@
 numpy==1.26.4
 streamlit==1.32.0
 scikit-learn==1.4.0
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-huggingface==0.0.3
+langchain-ollama==0.1.2
+langchain-core==0.3.0
+pydantic==2.6.4
+
 
 
 
@@ -17,3 +24,4 @@ steps:
 4.create a new ollama model using modelfile as command 'ollama create modelname -f modelfile'
 
 5.run the model using ollama serve is running and use the code 
+
